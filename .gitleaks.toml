@@ -1,0 +1,10 @@
+title = "Loomool gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets: test fixtures with placeholder passwords"
+paths = [
+    '''backend/apps/.*/tests/.*\.py''',
+]
