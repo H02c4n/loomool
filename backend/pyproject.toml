@@ -17,7 +17,7 @@ ignore = ["B008"]
 "apps/*/migrations/*.py" = ["E501"]
 
 [tool.bandit]
-exclude_dirs = ["apps/*/tests", "config/settings/test.py", "config/settings/local.py"]
+exclude_dirs = ["apps/*/tests/*", "config/settings/test.py", "config/settings/local.py"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
