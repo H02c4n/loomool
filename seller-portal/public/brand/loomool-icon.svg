@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 2 136 136" width="136" height="136" role="img" aria-label="Loomool">
+  <g fill="none" stroke-width="9" stroke-linecap="round">
+    <circle cx="30" cy="70" r="30" stroke="#F6EFE2"/>
+    <circle cx="62" cy="70" r="30" stroke="#F6EFE2"/>
+    <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#C8643C" stroke-width="19" stroke-linecap="butt"/>
+    <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#F6EFE2"/>
+    <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#C8643C" stroke-width="19" stroke-linecap="butt"/>
+    <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#F6EFE2"/>
+  </g>
+</svg>

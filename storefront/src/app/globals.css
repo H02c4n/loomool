@@ -1,0 +1,99 @@
+:root {
+  --color-forest: #1f3d33;
+  --color-terracotta: #c8643c;
+  --color-cream: #f6efe2;
+  --color-ivory: #fffbf2;
+  --color-sand: #eadfc9;
+  --color-ember: #e58a5f;
+  --color-moss: #5a6b63;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-cream);
+  color: var(--color-forest);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--color-ivory);
+  border-bottom: 1px solid var(--color-sand);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.site-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.site-nav a {
+  color: var(--color-forest);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.site-nav a:hover {
+  color: var(--color-terracotta);
+}
+
+.site-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  min-height: calc(100vh - 220px);
+}
+
+.hero h1 {
+  font-size: 3rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+
+.hero p {
+  font-size: 1.125rem;
+  color: var(--color-moss);
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+.hero .note {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-sand);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: var(--color-forest);
+}
+
+.site-footer {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-moss);
+  border-top: 1px solid var(--color-sand);
+}
+
+.site-footer p {
+  margin: 0.25rem 0;
+}
+
+.site-footer .tagline {
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  font-size: 0.75rem;
+  font-weight: 500;
+}

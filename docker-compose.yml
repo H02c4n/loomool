@@ -1,0 +1,79 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loomool
+      POSTGRES_PASSWORD: loomool
+      POSTGRES_DB: loomool
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loomool -d loomool"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    image: loomool-backend:local
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    env_file: .env
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    ports: ["8000:8000"]
+    volumes: ["./backend:/app"]
+
+  celery-worker:
+    image: loomool-backend:local
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    env_file: .env
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    volumes: ["./backend:/app"]
+
+  celery-beat:
+    image: loomool-backend:local
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    env_file: .env
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    volumes: ["./backend:/app"]
+
+  storefront:
+    build: ./storefront
+    command: sh -c "pnpm install && pnpm dev --port 3000"
+    env_file: .env
+    depends_on: [backend]
+    ports: ["3000:3000"]
+    volumes:
+      - ./storefront:/app
+      - storefront_next_cache:/app/.next
+
+  seller-portal:
+    build: ./seller-portal
+    command: sh -c "pnpm install && pnpm dev --port 3001"
+    env_file: .env
+    depends_on: [backend]
+    ports: ["3001:3001"]
+    volumes:
+      - ./seller-portal:/app
+      - seller_portal_next_cache:/app/.next
+
+volumes:
+  pgdata:
+  redisdata:
+  storefront_next_cache:
+  seller_portal_next_cache:

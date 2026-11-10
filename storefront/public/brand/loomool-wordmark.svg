@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 412 116" width="412" height="116" role="img" aria-label="Loomool">
+  <g fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 0 V100" stroke="#1F3D33"/>
+    <g transform="translate(36 0)">
+      <circle cx="30" cy="70" r="30" stroke="#C8643C"/>
+      <circle cx="62" cy="70" r="30" stroke="#1F3D33"/>
+      <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#FFFBF2" stroke-width="19" stroke-linecap="butt"/>
+      <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#1F3D33"/>
+      <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#FFFBF2" stroke-width="19" stroke-linecap="butt"/>
+      <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#C8643C"/>
+    </g>
+    <path d="M158 40 V100 M158 60 A20 20 0 0 1 198 60 V100 M198 60 A20 20 0 0 1 238 60 V100" stroke="#1F3D33"/>
+    <g transform="translate(268 0)">
+      <circle cx="30" cy="70" r="30" stroke="#C8643C"/>
+      <circle cx="62" cy="70" r="30" stroke="#1F3D33"/>
+      <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#FFFBF2" stroke-width="19" stroke-linecap="butt"/>
+      <path d="M37.73 52.37 A30 30 0 0 1 56.79 40.46" stroke="#1F3D33"/>
+      <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#FFFBF2" stroke-width="19" stroke-linecap="butt"/>
+      <path d="M54.27 87.63 A30 30 0 0 1 35.21 99.54" stroke="#C8643C"/>
+    </g>
+    <path d="M390 0 V100" stroke="#1F3D33"/>
+  </g>
+</svg>

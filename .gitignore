@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Django
+*.log
+/backend/staticfiles/
+/backend/media/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+pnpm-error.log
+.pnpm-store/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
