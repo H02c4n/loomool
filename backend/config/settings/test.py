@@ -11,3 +11,14 @@ DATABASES = {
     )
 }
 CELERY_TASK_ALWAYS_EAGER = True
+
+# Test-time overrides — no external Redis, no real email
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Rate limiting: keep it enabled (tests assert its behaviour) but use
+# a fast in-memory backend, which the CACHES override above achieves.

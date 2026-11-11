@@ -9,6 +9,9 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
     SENTRY_DSN=(str, ""),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
+    RATELIMIT_FAIL_OPEN=(bool, False),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -27,7 +30,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
     "apps.accounts",
+    "apps.audit",
+    "apps.stores",
+    "apps.authentication",
 ]
 
 MIDDLEWARE = [
@@ -37,6 +46,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -88,6 +98,14 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# ---- Cache (rate limiting, session, OTP) -----------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),
+    }
+}
+
 # ---- CORS -------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
@@ -122,7 +140,7 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
 }
 
-# ---- Sentry (not wired in Phase 1) ------------------------------------
+# ---- Sentry (not wired in Phase 1/2) ---------------------------------
 SENTRY_DSN = env("SENTRY_DSN")
 
 # ---- Celery -----------------------------------------------------------
@@ -132,3 +150,30 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+
+# ---- Email ------------------------------------------------------------
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Loomool <noreply@loomool.local>")
+
+# Public frontend URL — used in verification / reset links.
+FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="http://localhost:3000")
+
+# Token lifetimes
+EMAIL_VERIFICATION_TOKEN_TTL_HOURS = env.int("EMAIL_VERIFICATION_TOKEN_TTL_HOURS", default=48)
+PASSWORD_RESET_TOKEN_TTL_HOURS = env.int("PASSWORD_RESET_TOKEN_TTL_HOURS", default=2)
+
+# ---- OTP (TOTP for admin) ---------------------------------------------
+OTP_TOTP_ISSUER = env("OTP_TOTP_ISSUER", default="Loomool")
+
+# ---- Rate limiting ----------------------------------------------------
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_FAIL_OPEN = env("RATELIMIT_FAIL_OPEN")
+RATELIMIT_IP_META_KEY = "HTTP_X_FORWARDED_FOR"
