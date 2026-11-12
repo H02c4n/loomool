@@ -176,4 +176,3 @@ OTP_TOTP_ISSUER = env("OTP_TOTP_ISSUER", default="Loomool")
 # ---- Rate limiting ----------------------------------------------------
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_FAIL_OPEN = env("RATELIMIT_FAIL_OPEN")
-RATELIMIT_IP_META_KEY = "HTTP_X_FORWARDED_FOR"

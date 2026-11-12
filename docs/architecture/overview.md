@@ -31,3 +31,25 @@ Modules do not write to each other's models — they call services (`services.py
 - D14 Mobile after first launch.
 
 See `docs/decisions/` for ADRs.
+
+
+## Auth flow (Phase 2)
+
+POST /api/v1/auth/register/ → creates CUSTOMER, sends verify email
+POST /api/v1/auth/verify-email/ → marks verified
+POST /api/v1/auth/login/ → session cookie, cycles session key
+GET /api/v1/auth/csrf/ → sets CSRF cookie (SPA)
+GET /api/v1/me/ → current user
+POST /api/v1/auth/logout/ → CSRF-required, flushes session
+POST /api/v1/auth/password-reset/ → always 200 (anti-enumeration)
+POST /api/v1/auth/password-reset/confirm/ → sets new password
+POST /api/v1/auth/resend-verification/ → 3/h per user
+
+
+## Seller isolation — three layers (spec 0.2 §3)
+
+1. **Query-level:** `Store.objects.for_user(user)` filters to owned + member stores. Never returns other stores.
+2. **Object-level:** `IsStoreMember` / `IsStoreOwner` check `request.user` against the object before serialization.
+3. **(future) RLS:** PostgreSQL Row-Level Security as a second safety net for critical tables in Phase 8.
+
+**Contract:** any cross-seller access returns **404**, never 403. This is enforced and tested in `apps/stores/tests/test_isolation_api.py` (CI blocking).

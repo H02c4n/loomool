@@ -31,3 +31,24 @@ Phase 1 addresses the *foundations* of these mitigations:
 - PII in logs: base `LOGGING` config emits only `%(message)s` at JSON level; controllers must avoid logging request bodies.
 
 Everything else lands in its phase.
+
+
+## Phase 2 mitigations landed
+
+| Threat | Mitigation | Where |
+| --- | --- | --- |
+| T11 Admin takeover | Audit log for role/login/logout; admin MFA deferred to Phase 9 | `apps/audit/`, `apps/authentication/api/views.py` |
+| T9 Card testing (partial) | Rate limit on login (5/m), register (3/h), reset (5/h IP + 3/h email), resend (3/h user) | `apps/authentication/api/views.py` |
+| Session fixation | Django `login()` cycles session key; test asserts | `test_login_logout.py` |
+| Email enumeration | Register/reset return identical responses for known and unknown emails | `test_register.py`, `test_password_reset.py` |
+| Password brute force | Argon2 + min-length 12 + rate limit per IP | `config/settings/base.py` |
+| CSRF on session auth | DRF SessionAuthentication; enforced on authenticated unsafe methods | `test_csrf.py` |
+| Cross-seller read/write | `Store.objects.for_user()` + `IsStoreMember`; contract: 404 not 403 | `test_isolation_api.py` (CI blocking) |
+| Silent audit tampering | DB trigger rejects UPDATE/DELETE on `audit_auditlog` | `audit/migrations/0001_initial.py` |
+
+## Open follow-ups (not blocking Phase 2)
+
+- Session invalidation on password reset — defer to Phase 3.
+- Admin MFA UI — Phase 9.
+- Per-account lockout (not just IP) — Phase 6.
+- `X-Forwarded-For` trust in production — Phase 10 when Caddy is in place.

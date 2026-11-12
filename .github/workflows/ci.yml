@@ -37,12 +37,12 @@ jobs:
           cache-dependency-path: backend/requirements/test.txt
       - name: Install test deps
         run: pip install -r requirements/test.txt
-      - name: pytest
+      - name: Store isolation (blocking)
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
           DATABASE_URL: postgresql://loomool:loomool@localhost:5432/loomool
           DJANGO_SECRET_KEY: ci-test-secret-key-ci-test-secret-key-ci-test-secret-key-ci
-        run: pytest
+        run: pytest apps/stores/tests/test_isolation_api.py apps/stores/tests/test_isolation.py -x --no-header -q
 
   backend-lint:
     runs-on: ubuntu-latest

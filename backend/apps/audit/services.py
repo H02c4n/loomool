@@ -11,6 +11,7 @@ def log_action(
     *,
     action: str,
     actor=None,
+    actor_email: str | None = None,
     target_type: str = "",
     target_id: str = "",
     metadata: dict[str, Any] | None = None,
@@ -21,15 +22,20 @@ def log_action(
 
     Never include passwords, tokens or other secrets in `metadata`.
     Only IDs and non-sensitive contextual flags.
+
+    `actor_email` can be supplied when the actor is unknown (e.g. failed
+    login) so the attempted address is recorded for investigation.
     """
     ip = None
     if request is not None:
         xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
         ip = xff.split(",")[0].strip() or request.META.get("REMOTE_ADDR") or None
 
+    resolved_email = actor_email if actor_email is not None else getattr(actor, "email", "") or ""
+
     return AuditLog.objects.create(
         actor_user_id=getattr(actor, "id", None),
-        actor_email=getattr(actor, "email", "") or "",
+        actor_email=resolved_email or "",
         action=action,
         target_type=target_type,
         target_id=str(target_id) if target_id else "",

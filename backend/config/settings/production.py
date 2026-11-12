@@ -23,3 +23,8 @@ SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
+
+
+# Behind Caddy/Cloudflare: client IP is in X-Forwarded-For.
+# Required by django-ratelimit; the proxy always sets this header.
+RATELIMIT_IP_META_KEY = "HTTP_X_FORWARDED_FOR"

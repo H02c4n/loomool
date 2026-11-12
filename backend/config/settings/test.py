@@ -7,7 +7,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 DATABASES = {
     "default": env.db(  # noqa: F405
         "DATABASE_URL",
-        default="postgresql://loomool:loomool@localhost:5432/loomool",
+        "postgresql://loomool:loomool@localhost:5432/loomool",
     )
 }
 CELERY_TASK_ALWAYS_EAGER = True
@@ -19,6 +19,3 @@ CACHES = {
     }
 }
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-
-# Rate limiting: keep it enabled (tests assert its behaviour) but use
-# a fast in-memory backend, which the CACHES override above achieves.
