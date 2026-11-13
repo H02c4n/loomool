@@ -42,7 +42,15 @@ jobs:
           DJANGO_SETTINGS_MODULE: config.settings.test
           DATABASE_URL: postgresql://loomool:loomool@localhost:5432/loomool
           DJANGO_SECRET_KEY: ci-test-secret-key-ci-test-secret-key-ci-test-secret-key-ci
-        run: pytest apps/stores/tests/test_isolation_api.py apps/stores/tests/test_isolation.py -x --no-header -q
+        run: |
+          pytest \
+            apps/stores/tests/test_isolation_api.py \
+            apps/catalog/tests/test_product_crud.py::TestProductListIsolation \
+            apps/catalog/tests/test_product_crud.py::TestProductDetailIsolation \
+            apps/catalog/tests/test_images.py::TestImageUpload::test_other_seller_cannot_upload \
+            apps/catalog/tests/test_bom.py::TestBOMIsolation \
+            apps/catalog/tests/test_relationships.py::TestRelationships::test_other_seller_cannot_add \
+            -x --no-header -q
 
   backend-lint:
     runs-on: ubuntu-latest

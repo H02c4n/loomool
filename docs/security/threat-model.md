@@ -52,3 +52,24 @@ Everything else lands in its phase.
 - Admin MFA UI — Phase 9.
 - Per-account lockout (not just IP) — Phase 6.
 - `X-Forwarded-For` trust in production — Phase 10 when Caddy is in place.
+
+
+
+
+## Phase 3 threat mitigations
+
+| Threat | Mitigation | Where |
+| --- | --- | --- |
+| Malicious file upload (SVG/HTML/script) | Magic-byte rejection for `<svg`, `<?xml`, `<!doctype html`, `<html`; Pillow `verify()`; whitelist JPEG/PNG/WebP; max 10 MB | `apps/catalog/image_processing.py` |
+| Image-based XSS (polyglot) | Re-encode via Pillow + strip EXIF via `exif_transpose` + WebP output | `image_processing.py::_open_and_validate`, `_encode_webp` |
+| Cross-store product access | `ProductScopedManager.for_user()` + `IsProductStoreMember`; contract 404 not 403 | `test_product_crud.py::TestProduct*Isolation` |
+| Cross-store image upload | Same 404 contract on image endpoint | `test_images.py::test_other_seller_cannot_upload` |
+| Cross-store BOM injection | Service enforces `kit.store == component.store` | `test_bom.py::test_cross_store_component_rejected` |
+| Self-reference BOM / relationship | DB `CHECK` constraints + service validation | `component_self_reference`, `relationship_self_reference` |
+| Attribute injection (unknown keys) | `validate_attributes` rejects unknown keys strictly | `catalog/services.py` |
+| Price manipulation via client | API accepts cents only; frontend never computes totals; Phase 5 will compute from order snapshot | `test_product_crud.py` |
+| Orphan S3 files on DB failure | **Known gap** — reconciler in Phase 7 | — |
+
+**Open follow-ups:**
+- CSV/PDF digital products (Phase 11) will need different validation rules.
+- BOM nested kits (kit in kit) intentionally unsupported; add recursive check if required.

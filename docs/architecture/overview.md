@@ -53,3 +53,23 @@ POST /api/v1/auth/resend-verification/ → 3/h per user
 3. **(future) RLS:** PostgreSQL Row-Level Security as a second safety net for critical tables in Phase 8.
 
 **Contract:** any cross-seller access returns **404**, never 403. This is enforced and tested in `apps/stores/tests/test_isolation_api.py` (CI blocking).
+
+
+
+## Catalog (Phase 3)
+Category (tree) ── CategoryAttributeDefinition (validation schema)
+│
+└── Product (store-scoped, JSONB attributes)
+├── ProductOptionDefinition
+├── ProductVariant ─── Inventory (one row)
+├── ProductImage (S3, 3 WebP sizes)
+├── ProductComponent (BOM: kit → material)
+└── ProductRelationship (graph edges)
+
+
+
+**BOM invariant:** `kit.type == DIY_KIT`, `component.type == MATERIAL`, same store, no self-reference. Cycle impossible by construction.
+
+**Search prep:** `catalog_product.search_vector` generated column (name=A, description=B) with GIN + trigram index. Endpoint in Phase 4.
+
+**Isolation:** all mutation endpoints call `Product.objects.for_user(request.user)` and `IsProductStoreMember().has_object_permission()`. Cross-seller access → **404**. BOM additionally enforces same-store for components. Relationships may point cross-store by design.

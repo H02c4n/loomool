@@ -19,3 +19,9 @@ CACHES = {
     }
 }
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# In-memory file storage for tests — no MinIO, no S3.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}

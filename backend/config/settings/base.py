@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.stores",
     "apps.authentication",
+    "apps.catalog",
+    "apps.inventory",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +144,27 @@ LOGGING = {
 
 # ---- Sentry (not wired in Phase 1/2) ---------------------------------
 SENTRY_DSN = env("SENTRY_DSN")
+
+# ---- Object storage ---------------------------------------------------
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": env("AWS_STORAGE_BUCKET_NAME", default="loomool-media"),
+            "endpoint_url": env("AWS_S3_ENDPOINT_URL", default="") or None,
+            "access_key": env("AWS_ACCESS_KEY_ID", default=""),
+            "secret_key": env("AWS_SECRET_ACCESS_KEY", default=""),
+            "region_name": env("AWS_S3_REGION_NAME", default="eu-north-1"),
+            "default_acl": None,
+            "querystring_auth": env.bool("AWS_QUERYSTRING_AUTH", default=False),
+            "file_overwrite": False,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+MEDIA_URL = "/media/"
 
 # ---- Celery -----------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
