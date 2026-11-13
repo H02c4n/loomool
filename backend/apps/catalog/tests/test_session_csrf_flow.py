@@ -16,9 +16,7 @@ User = get_user_model()
 
 @pytest.fixture
 def seller_with_kit(db):
-    seller = User.objects.create_user(
-        email="flow@example.com", password="long-password-123"
-    )
+    seller = User.objects.create_user(email="flow@example.com", password="long-password-123")
     store = Store.objects.create(name="Flow", slug="flow", owner=seller)
     cat = Category.objects.create(name="K", slug="k")
     kit = Product.objects.create(
