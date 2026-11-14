@@ -28,3 +28,7 @@ X_FRAME_OPTIONS = "DENY"
 # Behind Caddy/Cloudflare: client IP is in X-Forwarded-For.
 # Required by django-ratelimit; the proxy always sets this header.
 RATELIMIT_IP_META_KEY = "HTTP_X_FORWARDED_FOR"
+
+
+# Production: add real frontend origins when domains are known.
+# Example: CSRF_TRUSTED_ORIGINS = ["https://loomool.se", "https://www.loomool.se"]

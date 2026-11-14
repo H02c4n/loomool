@@ -73,3 +73,18 @@ Everything else lands in its phase.
 **Open follow-ups:**
 - CSV/PDF digital products (Phase 11) will need different validation rules.
 - BOM nested kits (kit in kit) intentionally unsupported; add recursive check if required.
+
+
+## Phase 4 mitigations
+
+| Threat | Mitigation | Where |
+| --- | --- | --- |
+| Cross-origin CSRF | `CSRF_TRUSTED_ORIGINS` in local/prod; `SessionAuthentication` for authenticated; `enforce_csrf` for anonymous cart | `config/settings/*`, `apps/common/csrf.py` |
+| Cart IDOR | Cart items fetched from `request.user.cart` or `cart_session` cookie only; cross-user `item_id` → 404 | `test_cart_isolation.py` (CI blocking) |
+| Anonymous cart takeover | 32-byte URL-safe key in `HttpOnly`, `SameSite=Lax` cookie, 30d; CSRF required for mutation | `apps/shop/services.py` |
+| Cart merge conflict | Quantities sum, capped at 10; session cart deleted on success | `test_cart_merge.py` |
+| Image URL leakage | S3 private bucket, 1h signed URLs; list endpoints `Cache-Control: public, max-age=60` | `STORAGES`, `_serialize_cart` |
+| Favorite data leak | Auth-only; user filter enforced in view | `test_favorites.py::test_two_users_isolated` |
+| Cart price manipulation | Server computes totals from `Variant.effective_price_cents`; client cannot change unit price | `services.py::_serialize_cart` |
+| Storefront XSS | Product descriptions rendered as text (no `dangerouslySetInnerHTML`); React auto-escapes | All components |
+| Origin bypass in curl smoke tests | curl does not send `Origin`, browser does. Browser smoke required for any state-changing endpoint. | Threat-model note for future |

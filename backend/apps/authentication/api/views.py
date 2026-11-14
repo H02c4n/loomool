@@ -1,6 +1,4 @@
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponse
-from django.middleware.csrf import CsrfViewMiddleware
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
@@ -17,6 +15,7 @@ from apps.authentication.api.serializers import (
     RegisterSerializer,
     VerifyEmailSerializer,
 )
+from apps.common.csrf import enforce_csrf as _enforce_csrf
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,28 +31,6 @@ def _too_many() -> Response:
         {"detail": "Too many requests. Please try again later."},
         status=status.HTTP_429_TOO_MANY_REQUESTS,
     )
-
-
-def _dummy_view(request):
-    """Callback for CsrfViewMiddleware.process_view; must not set csrf_exempt."""
-    return HttpResponse()
-
-
-def _enforce_csrf(request):
-    """
-    Run Django's CSRF check explicitly.
-
-    Returns an HttpResponse (403) if CSRF validation fails, None if it passes.
-    Call this at the top of POST views that need CSRF but are wrapped in
-    DRF's @api_view (which sets csrf_exempt=True on the outer function,
-    causing Django's CsrfViewMiddleware to skip the check globally).
-
-    The check is only meaningful on unsafe methods; GET/HEAD/OPTIONS/TRACE
-    always pass, so calling this on a GET view is harmless but unnecessary.
-    """
-    # Reset so process_view actually performs the check.
-    request.csrf_processing_done = False
-    return CsrfViewMiddleware(_dummy_view).process_view(request, _dummy_view, (), {})
 
 
 # ---------------------------------------------------------------------------

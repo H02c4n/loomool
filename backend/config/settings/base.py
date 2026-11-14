@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.authentication",
     "apps.catalog",
     "apps.inventory",
+    "apps.shop",
 ]
 
 MIDDLEWARE = [
@@ -110,6 +111,7 @@ CACHES = {
 
 # ---- CORS -------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 
 # ---- DRF --------------------------------------------------------------
@@ -156,7 +158,8 @@ STORAGES = {
             "secret_key": env("AWS_SECRET_ACCESS_KEY", default=""),
             "region_name": env("AWS_S3_REGION_NAME", default="eu-north-1"),
             "default_acl": None,
-            "querystring_auth": env.bool("AWS_QUERYSTRING_AUTH", default=False),
+            "querystring_auth": env.bool("AWS_QUERYSTRING_AUTH", default=True),
+            "querystring_expire": env.int("AWS_QUERYSTRING_EXPIRE", default=3600),
             "file_overwrite": False,
         },
     },

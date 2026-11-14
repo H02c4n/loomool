@@ -73,3 +73,30 @@ Category (tree) ── CategoryAttributeDefinition (validation schema)
 **Search prep:** `catalog_product.search_vector` generated column (name=A, description=B) with GIN + trigram index. Endpoint in Phase 4.
 
 **Isolation:** all mutation endpoints call `Product.objects.for_user(request.user)` and `IsProductStoreMember().has_object_permission()`. Cross-seller access → **404**. BOM additionally enforces same-store for components. Relationships may point cross-store by design.
+
+
+## Phase 4 customer flow
+Browser
+→ storefront (Next.js SSR + Client Components)
+→ /api/v1/catalog/categories/ (public, tree)
+→ /api/v1/shop/products/ (public, filters + search + pagination)
+→ /api/v1/shop/products/<store>/<slug>/ (public, detail)
+→ /api/v1/shop/stores/<slug>/ (public, store + products)
+→ /api/v1/shop/cart/ (session OR user, anonymous via cart_session cookie)
+→ /api/v1/shop/favorites/ (auth only)
+
+
+**Rendering strategy:**
+- Server Components: Home, Search, Product Detail, Store Page (SEO + cache)
+- Client Components: Cart Page, Favorites, Login, Register, AddToCart, FavoriteToggle, CartBadge
+
+**Media pipeline:**
+- S3 private bucket, 1h signed URLs (`querystring_auth=True`, `querystring_expire=3600`)
+- Next.js `rewrites` proxies `/media/*` → MinIO in local; Caddy in production
+- API client rewrites `http://minio:9000/loomool-media/<key>` → `/media/<key>`
+
+**CSRF contract:**
+- Anonymous cart mutations: `enforce_csrf(request._request)` view helper
+- Authenticated unsafe (cart, favorites): DRF `SessionAuthentication` + Django `CSRF_TRUSTED_ORIGINS`
+- Frontend `apiMutate()` calls `/api/v1/auth/csrf/` on first unsafe request; extracts token from cookie and sends `X-CSRFToken`
+- Local `CSRF_TRUSTED_ORIGINS` = `["http://localhost:3000", "http://localhost:3001"]`

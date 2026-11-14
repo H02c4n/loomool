@@ -50,6 +50,10 @@ jobs:
             apps/catalog/tests/test_images.py::TestImageUpload::test_other_seller_cannot_upload \
             apps/catalog/tests/test_bom.py::TestBOMIsolation \
             apps/catalog/tests/test_relationships.py::TestRelationships::test_other_seller_cannot_add \
+            apps/shop/tests/test_products_public.py \
+            apps/shop/tests/test_stores_public.py \
+            apps/shop/tests/test_cart_isolation.py \
+            apps/shop/tests/test_favorites.py::TestFavorites::test_two_users_isolated \
             -x --no-header -q
 
   backend-lint:

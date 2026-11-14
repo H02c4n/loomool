@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import CartBadge from "@/components/CartBadge";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,15 +25,21 @@ export default function RootLayout({
             <Image
               src="/brand/loomool-wordmark.svg"
               alt="Loomool"
-              width={200}
-              height={56}
+              width={160}
+              height={45}
               priority
             />
           </Link>
           <nav className="site-nav">
-            <Link href="/">Shop</Link>
-            <Link href="/sellers">Sellers</Link>
-            <Link href="/about">About</Link>
+            <Link href="/search">Shop</Link>
+            <Link href="/favorites">Favorites</Link>
+            <Link href="/cart" className="site-nav__cart">
+              Cart <CartBadge />
+            </Link>
+            <Link href="/login">Login</Link>
+            <Link href="/register" className="site-nav__cta">
+              Sign up
+            </Link>
           </nav>
         </header>
         <main className="site-main">{children}</main>
