@@ -11,6 +11,8 @@ interface PageProps {
   params: Promise<{ storeSlug: string; productSlug: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductDetailPage({ params }: PageProps) {
   const { storeSlug, productSlug } = await params;
 

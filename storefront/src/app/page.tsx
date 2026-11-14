@@ -4,7 +4,7 @@ import ProductCard from "@/components/ProductCard";
 import { apiGet } from "@/lib/api";
 import type { Category, Paginated, ProductListItem } from "@/lib/types";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [products, categories] = await Promise.all([
