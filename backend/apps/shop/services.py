@@ -1,11 +1,30 @@
 from __future__ import annotations
 
 import secrets
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
-from apps.catalog.models import ProductVariant
-from apps.shop.models import Cart, CartItem, Favorite
+from apps.audit.services import log_action
+from apps.catalog.models import ProductType, ProductVariant
+from apps.inventory.services import (
+    MultiReservationFailed,
+    release_many,
+    reserve_many,
+)
+from apps.shop.models import (
+    Cart,
+    CartItem,
+    Favorite,
+    Order,
+    OrderItem,
+    OrderStatus,
+    OrderStatusHistory,
+    SellerOrder,
+    SellerOrderStatusHistory,
+)
 
 CART_SESSION_COOKIE = "cart_session"
 CART_SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
@@ -122,3 +141,201 @@ def toggle_favorite(*, user, product_id) -> tuple[Favorite, bool]:
 
     favorite = Favorite.objects.create(user=user, product=product)
     return favorite, True
+
+
+# ---------------------------------------------------------------------------
+# Order creation
+# ---------------------------------------------------------------------------
+
+
+class CartEmpty(Exception):
+    pass
+
+
+class UnsupportedProductType(Exception):
+    def __init__(self, product_type: str):
+        super().__init__(f"unsupported_product_type:{product_type}")
+        self.product_type = product_type
+
+
+class OutOfStock(Exception):
+    def __init__(self, variant_id):
+        super().__init__(f"out_of_stock:{variant_id}")
+        self.variant_id = variant_id
+
+
+class InvalidOrderState(Exception):
+    def __init__(self, status: str):
+        super().__init__(f"invalid_order_state:{status}")
+        self.status = status
+
+
+@transaction.atomic
+def create_order_from_cart(*, cart: Cart, user) -> Order:
+    """
+    Convert a cart into an Order.
+
+    All-or-nothing:
+      1. Reserve stock for every line (atomic; variant_id sort order).
+      2. Create Order + SellerOrder(s) + OrderItem(s) with price snapshots.
+      3. Append status history rows.
+      4. Clear the cart.
+    Any failure rolls back the entire transaction, including reservations.
+
+    Phase 5 only sells MATERIAL products. DIY_KIT/other types raise
+    `UnsupportedProductType` — BOM stock semantics land in Phase 5b.
+    """
+    items = list(cart.items.select_related("variant__product__store").all())
+    if not items:
+        raise CartEmpty()
+
+    for item in items:
+        if item.variant.product.type != ProductType.MATERIAL:
+            raise UnsupportedProductType(item.variant.product.type)
+
+    try:
+        reserve_many([{"variant_id": it.variant_id, "quantity": it.quantity} for it in items])
+    except MultiReservationFailed as exc:
+        raise OutOfStock(exc.failed_variant_id) from exc
+
+    by_store: dict = {}
+    for item in items:
+        by_store.setdefault(item.variant.product.store_id, []).append(item)
+
+    now = timezone.now()
+    ttl_minutes = settings.ORDER_RESERVATION_TTL_MINUTES
+    commission_percent = settings.COMMISSION_DEFAULT_RATE_PERCENT
+    currency = items[0].variant.product.currency
+
+    order = Order.objects.create(
+        user=user,
+        status=OrderStatus.PENDING_PAYMENT,
+        currency=currency,
+        expires_at=now + timedelta(minutes=ttl_minutes),
+    )
+    OrderStatusHistory.objects.create(
+        order=order,
+        from_status="",
+        to_status=OrderStatus.PENDING_PAYMENT,
+        reason="order_created",
+        actor_user_id=user.id,
+    )
+
+    grand_total = 0
+    for store_id, store_items in by_store.items():
+        seller_order = SellerOrder.objects.create(
+            order=order,
+            store_id=store_id,
+            status=OrderStatus.PENDING_PAYMENT,
+            currency=currency,
+        )
+        SellerOrderStatusHistory.objects.create(
+            seller_order=seller_order,
+            from_status="",
+            to_status=OrderStatus.PENDING_PAYMENT,
+            reason="order_created",
+            actor_user_id=user.id,
+        )
+
+        subtotal = 0
+        for item in store_items:
+            variant = item.variant
+            product = variant.product
+            unit_price = variant.effective_price_cents
+            line_total = unit_price * item.quantity
+
+            OrderItem.objects.create(
+                seller_order=seller_order,
+                variant=variant,
+                product_name=product.name,
+                variant_sku=variant.sku,
+                variant_options=variant.options,
+                unit_price_cents=unit_price,
+                quantity=item.quantity,
+                line_total_cents=line_total,
+                tax_class=product.tax_class,
+                tax_rate_percent=25,
+                commission_rate_percent=commission_percent,
+                commission_rule_version="phase5-default",
+            )
+            subtotal += line_total
+
+        seller_order.subtotal_cents = subtotal
+        seller_order.save(update_fields=["subtotal_cents"])
+        grand_total += subtotal
+
+    order.total_cents = grand_total
+    order.save(update_fields=["total_cents"])
+
+    cart.items.all().delete()
+
+    log_action(
+        action="order.created",
+        actor=user,
+        target_type="order",
+        target_id=order.id,
+        metadata={
+            "seller_order_count": len(by_store),
+            "item_count": len(items),
+            "total_cents": grand_total,
+        },
+    )
+    return order
+
+
+@transaction.atomic
+def cancel_order(*, order: Order, actor, reason: str = "") -> Order:
+    """
+    Cancel a PENDING_PAYMENT order and release its stock.
+
+    Re-fetches the order under `select_for_update` to prevent races with the
+    expiry task or a concurrent user cancel. Raises `InvalidOrderState` if
+    the order is not in PENDING_PAYMENT.
+    """
+    order = Order.objects.select_for_update().get(id=order.id)
+
+    if order.status != OrderStatus.PENDING_PAYMENT:
+        raise InvalidOrderState(order.status)
+
+    item_refs = list(
+        OrderItem.objects.filter(seller_order__order=order).values("variant_id", "quantity")
+    )
+    release_many(
+        [{"variant_id": ref["variant_id"], "quantity": ref["quantity"]} for ref in item_refs]
+    )
+
+    previous_status = order.status
+    order.status = OrderStatus.CANCELLED
+    order.save(update_fields=["status", "updated_at"])
+
+    resolved_reason = reason or "cancelled"
+    actor_id = getattr(actor, "id", None)
+
+    for seller_order in order.seller_orders.all():
+        prev = seller_order.status
+        seller_order.status = OrderStatus.CANCELLED
+        seller_order.save(update_fields=["status", "updated_at"])
+        SellerOrderStatusHistory.objects.create(
+            seller_order=seller_order,
+            from_status=prev,
+            to_status=OrderStatus.CANCELLED,
+            reason=resolved_reason,
+            actor_user_id=actor_id,
+        )
+
+    OrderStatusHistory.objects.create(
+        order=order,
+        from_status=previous_status,
+        to_status=OrderStatus.CANCELLED,
+        reason=resolved_reason,
+        actor_user_id=actor_id,
+    )
+
+    log_action(
+        action="order.cancelled",
+        actor=actor,
+        target_type="order",
+        target_id=order.id,
+        metadata={"reason": resolved_reason},
+    )
+    return order

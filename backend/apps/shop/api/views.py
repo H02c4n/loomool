@@ -18,20 +18,20 @@ from apps.catalog.models import Category, Product, ProductType
 from apps.common.csrf import enforce_csrf as _enforce_csrf
 from apps.shop import services
 from apps.shop.api.serializers import (
+    CancelOrderSerializer,
     CartAddItemSerializer,
     CartItemDetailSerializer,
     CartUpdateItemSerializer,
     FavoriteAddSerializer,
     FavoriteSerializer,
-)
-from apps.shop.models import Favorite
-from apps.stores.models import Store
-
-from .serializers import (
+    OrderDetailSerializer,
+    OrderListSerializer,
     PublicProductDetailSerializer,
     PublicProductListSerializer,
     PublicStoreSerializer,
 )
+from apps.shop.models import Cart, Favorite, Order
+from apps.stores.models import Store
 
 
 class ShopPagination(PageNumberPagination):
@@ -380,3 +380,104 @@ def favorite_toggle_view(request):
     if is_now:
         return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
+# Orders
+# ---------------------------------------------------------------------------
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def order_list_create_view(request):
+    """
+    GET  — user's orders, newest first.
+    POST — create an order from the current cart.
+
+    The cart is derived from the request (user's cart); the client never
+    supplies it. Stock reservation is atomic; a failure rolls back the
+    entire order including all reservations.
+    """
+    if request.method == "GET":
+        qs = Order.objects.filter(user=request.user).order_by("-created_at")
+        return Response(OrderListSerializer(qs, many=True).data)
+
+    cart = Cart.objects.filter(user=request.user).first()
+    if cart is None or not cart.items.exists():
+        return Response({"detail": "cart_empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        order = services.create_order_from_cart(cart=cart, user=request.user)
+    except services.CartEmpty:
+        return Response({"detail": "cart_empty"}, status=status.HTTP_400_BAD_REQUEST)
+    except services.UnsupportedProductType as exc:
+        return Response(
+            {
+                "detail": "unsupported_product_type",
+                "product_type": exc.product_type,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except services.OutOfStock as exc:
+        return Response(
+            {
+                "detail": "out_of_stock",
+                "variant_id": str(exc.variant_id),
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    return Response(OrderDetailSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def order_detail_view(request, order_id):
+    """
+    A user can only see their own orders. Any other order id yields 404,
+    never 403 — matching the store/product isolation contract.
+    """
+    order = (
+        Order.objects.filter(id=order_id, user=request.user)
+        .prefetch_related(
+            "seller_orders__items__variant__product__store",
+            "seller_orders__store",
+        )
+        .first()
+    )
+    if order is None:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(OrderDetailSerializer(order).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def order_cancel_view(request, order_id):
+    """
+    Cancel a PENDING_PAYMENT order and release its stock. Any other
+    status → 400 (invalid state). Any other user's order → 404.
+    """
+    order = Order.objects.filter(id=order_id, user=request.user).first()
+    if order is None:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = CancelOrderSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        order = services.cancel_order(
+            order=order,
+            actor=request.user,
+            reason=serializer.validated_data.get("reason", "") or "user_cancelled",
+        )
+    except services.InvalidOrderState as exc:
+        return Response(
+            {
+                "detail": "invalid_order_state",
+                "current_status": exc.status,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return Response(OrderDetailSerializer(order).data)

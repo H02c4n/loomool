@@ -1,10 +1,10 @@
-# Loomool — Architecture Overview (Phase 0 → 1)
+# kiterpillar — Architecture Overview (Phase 0 → 1)
 
 Source of truth: `mimari-sartname-v2.md` (Bölüm 0–26).
 
 ## In one paragraph
 
-Loomool is a multi-seller marketplace for DIY kits, handmade goods, materials and creative workshops. Backend is a modular monolith (Django + DRF + PostgreSQL + Celery/Redis). Two Next.js frontends (`storefront` for customers, `seller-portal` for sellers) consume the same versioned REST API. Financial state is double-entry, immutable and DB-enforced. Phase 1 delivers only the scaffold — no business logic yet.
+kiterpillar is a multi-seller marketplace for DIY kits, handmade goods, materials and creative workshops. Backend is a modular monolith (Django + DRF + PostgreSQL + Celery/Redis). Two Next.js frontends (`storefront` for customers, `seller-portal` for sellers) consume the same versioned REST API. Financial state is double-entry, immutable and DB-enforced. Phase 1 delivers only the scaffold — no business logic yet.
 
 ## Runtime topology (Phase 1)
 
@@ -100,3 +100,37 @@ Browser
 - Authenticated unsafe (cart, favorites): DRF `SessionAuthentication` + Django `CSRF_TRUSTED_ORIGINS`
 - Frontend `apiMutate()` calls `/api/v1/auth/csrf/` on first unsafe request; extracts token from cookie and sends `X-CSRFToken`
 - Local `CSRF_TRUSTED_ORIGINS` = `["http://localhost:3000", "http://localhost:3001"]`
+
+
+## Phase 5 order flow
+Cart (per user / per cart_session cookie)
+│
+│ POST /api/v1/shop/orders/
+▼
+Order creation (services.create_order_from_cart) — single transaction
+│
+├─ 1. Validate: cart not empty, all items are MATERIAL type
+├─ 2. Reserve stock: reserve_many(variant_id sort order, atomic)
+│ └─ failure → raise OutOfStock → whole transaction rolls back
+├─ 3. Create Order + SellerOrder(s) + OrderItem(s) with price snapshots
+├─ 4. Append OrderStatusHistory + SellerOrderStatusHistory rows
+├─ 5. Clear cart
+▼
+Order (status=PENDING_PAYMENT, expires_at=now + TTL)
+│
+├─ GET /api/v1/shop/orders/ (list, owner only)
+├─ GET /api/v1/shop/orders/<uuid>/ (detail, 404 for other users)
+└─ POST /api/v1/shop/orders/<uuid>/cancel/ (owner, PENDING_PAYMENT only)
+
+
+
+**Concurrent paths:**
+
+- **User cancel** → `cancel_order` → `select_for_update` → release stock → `CANCELLED`
+- **Expiry task** (Celery, every 60s) → `expire_stale_orders_task` → calls the same `cancel_order` with `reason="expired"` → idempotent under race (second caller raises `InvalidOrderState` and is counted as skipped)
+
+**Isolation contract:** every order fetch uses `Order.objects.filter(user=request.user)`; cross-user detail/cancel → **404** (never 403), matching product/cart contract.
+
+**Phase 5b (deferred):** DIY_KIT orders — BOM stock resolution (kit stock derived from component availability). `create_order_from_cart` currently rejects them with `UnsupportedProductType`.
+
+**Phase 6 (deferred):** Stripe Checkout, webhook → `PAID`, `shipping_address` population, `order_status_history` entries for payment transitions.

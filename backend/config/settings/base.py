@@ -177,6 +177,18 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
+CELERY_BEAT_SCHEDULE = {
+    "expire-stale-orders": {
+        "task": "apps.shop.tasks.expire_stale_orders_task",
+        "schedule": 60.0,
+    },
+}
+
+# ---- Orders (Phase 5) -------------------------------------------------
+ORDER_RESERVATION_TTL_MINUTES = env.int("ORDER_RESERVATION_TTL_MINUTES", default=30)
+COMMISSION_DEFAULT_RATE_PERCENT = env.int("COMMISSION_DEFAULT_RATE_PERCENT", default=15)
+
+
 # ---- Email ------------------------------------------------------------
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
@@ -187,7 +199,7 @@ EMAIL_PORT = env.int("EMAIL_PORT")
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Loomool <noreply@loomool.local>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="kiterpillar <noreply@kiterpillar.local>")
 
 # Public frontend URL — used in verification / reset links.
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="http://localhost:3000")
@@ -197,7 +209,7 @@ EMAIL_VERIFICATION_TOKEN_TTL_HOURS = env.int("EMAIL_VERIFICATION_TOKEN_TTL_HOURS
 PASSWORD_RESET_TOKEN_TTL_HOURS = env.int("PASSWORD_RESET_TOKEN_TTL_HOURS", default=2)
 
 # ---- OTP (TOTP for admin) ---------------------------------------------
-OTP_TOTP_ISSUER = env("OTP_TOTP_ISSUER", default="Loomool")
+OTP_TOTP_ISSUER = env("OTP_TOTP_ISSUER", default="kiterpillar")
 
 # ---- Rate limiting ----------------------------------------------------
 RATELIMIT_USE_CACHE = "default"

@@ -88,3 +88,30 @@ Everything else lands in its phase.
 | Cart price manipulation | Server computes totals from `Variant.effective_price_cents`; client cannot change unit price | `services.py::_serialize_cart` |
 | Storefront XSS | Product descriptions rendered as text (no `dangerouslySetInnerHTML`); React auto-escapes | All components |
 | Origin bypass in curl smoke tests | curl does not send `Origin`, browser does. Browser smoke required for any state-changing endpoint. | Threat-model note for future |
+
+
+## Phase 5 threat mitigations
+
+| Threat | Mitigation | Where |
+| --- | --- | --- |
+| Order IDOR | All order endpoints filter on `user=request.user`; cross-user → 404 (never 403) | `apps/shop/api/views.py`, `test_order_isolation.py` (CI blocking) |
+| Cancel IDOR | Cancel endpoint scoped to owner; other user's order id → 404 | `test_order_isolation.py::test_buyer_b_cannot_cancel_a_order` |
+| Cancel of non-cancellable order | `cancel_order` checks `status == PENDING_PAYMENT` under `select_for_update` | `test_orders.py::TestOrderCancel::test_cancel_twice_fails` |
+| Stock oversell race | `reserve_many` uses `UPDATE ... WHERE quantity_available >= n`; DB `CHECK (quantity_available >= 0)` is second net; variants locked in `variant_id` sort order | `apps/inventory/services.py`, `test_orders.py::test_out_of_stock_rolls_back` |
+| Deadlock between concurrent orders | Multi-variant reservations sort by `variant_id` before updating | `reserve_many` |
+| Partial order creation | All steps (reserve, order, history, cart clear) in one `transaction.atomic()`; any failure rolls back all reservations | `services.create_order_from_cart` |
+| Reservation DoS | `ORDER_RESERVATION_TTL_MINUTES=30`; Celery expiry every 60s; bounded 500/order batch | `apps/shop/tasks.py` |
+| Expiry task double-cancel | `cancel_order` uses `select_for_update` + status check; second caller gets `InvalidOrderState` | `tasks.py`, `test_order_expiry.py` |
+| Price manipulation at checkout | Server computes totals from `Variant.effective_price_cents` at order time; client never sends amounts | `create_order_from_cart` |
+| Price change post-order | `OrderItem.unit_price_cents`, `line_total_cents`, `tax_class`, `commission_rate_percent` frozen at creation | `OrderItem` model, ADR 0008 |
+| Order history tampering | DB trigger rejects UPDATE/DELETE on `shop_orderstatushistory` and `shop_sellerorderstatushistory` | `shop/migrations/0003_order_history_trigger.py` |
+| Cascade delete bypassing history | Cascade delete of `Order` also triggers the history delete trigger, blocking the whole delete | Verified manually in Phase 5 shell test |
+| Cross-seller access to orders | Orders are user-scoped; seller view of orders is Phase 7 (will require `Store`-scoped manager + `SellerOrder` permission) | — |
+
+**Open follow-ups (Phase 6+):**
+
+- Stripe webhook replay → handled in Phase 6 (`stripe_event_id` unique, signature verification).
+- Partial refund updates `Order.total_cents` consistently — Phase 6.
+- `Order.status` cache drift — Phase 6 adds more transitions and will need a helper pattern with tests.
+- DIY_KIT orders (Phase 5b) — BOM-aware stock needs its own race tests.
+- Seller-side order access (Phase 7) — must repeat the isolation test pattern from Phase 2/4/5.

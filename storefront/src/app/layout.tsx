@@ -7,7 +7,7 @@ import CartBadge from "@/components/CartBadge";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Loomool — Make it. Kit it. Sell it.",
+  title: "kiterpillar — Make it. Kit it. Sell it.",
   description:
     "Marketplace for DIY kits, handmade goods, materials and creative workshops.",
 };
@@ -23,8 +23,8 @@ export default function RootLayout({
         <header className="site-header">
           <Link href="/" className="brand">
             <Image
-              src="/brand/loomool-wordmark.svg"
-              alt="Loomool"
+              src="/brand/kiterpillar-wordmark.svg"
+              alt="kiterpillar"
               width={160}
               height={45}
               priority
@@ -44,7 +44,7 @@ export default function RootLayout({
         </header>
         <main className="site-main">{children}</main>
         <footer className="site-footer">
-          <p>© {new Date().getFullYear()} Loomool</p>
+          <p>© {new Date().getFullYear()} kiterpillar</p>
           <p className="tagline">Make it · Kit it · Sell it</p>
         </footer>
       </body>

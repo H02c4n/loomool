@@ -25,3 +25,7 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
+
+
+# Faster reservation expiry for tests. Tests can override per-case.
+ORDER_RESERVATION_TTL_MINUTES = 1

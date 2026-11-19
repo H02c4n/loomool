@@ -108,7 +108,7 @@ export default function CartPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt={item.product.name} />
                     ) : (
-                      <span className="product-card__placeholder">Loomool</span>
+                      <span className="product-card__placeholder">kiterpillar</span>
                     )}
                   </div>
                   <div className="cart-item__body">

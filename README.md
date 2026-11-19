@@ -1,4 +1,4 @@
-# loomool
+# kiterpillar
 
 Marketplace for DIY kits, handmade goods and creative workshops.
 

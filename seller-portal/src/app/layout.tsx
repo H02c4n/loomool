@@ -5,8 +5,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Loomool — Seller Portal",
-  description: "Manage your Loomool store, products, orders and payouts.",
+  title: "Kiterpillar — Seller Portal",
+  description: "Manage your Kiterpillar store, products, orders and payouts.",
 };
 
 export default function RootLayout({
@@ -20,10 +20,10 @@ export default function RootLayout({
         <header className="site-header">
           <Link href="/" className="brand">
             <Image
-              src="/brand/loomool-wordmark.svg"
-              alt="Loomool"
-              width={200}
-              height={56}
+              src="/brand/kiterpillar-wordmark.svg"
+              alt="Kiterpillar"
+              width={180}
+              height={50}
               priority
             />
           </Link>
@@ -36,8 +36,8 @@ export default function RootLayout({
         </header>
         <main className="site-main">{children}</main>
         <footer className="site-footer">
-          <p>© {new Date().getFullYear()} Loomool</p>
-          <p className="tagline">Sell it with Loomool</p>
+          <p>© {new Date().getFullYear()} Kiterpillar</p>
+          <p className="tagline">Make · Create · Grow</p>
         </footer>
       </body>
     </html>

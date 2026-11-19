@@ -2,7 +2,7 @@ from django.core.files.storage import default_storage
 from rest_framework import serializers
 
 from apps.catalog.models import Product, ProductImage, ProductVariant
-from apps.shop.models import CartItem, Favorite
+from apps.shop.models import CartItem, Favorite, Order, OrderItem, SellerOrder
 from apps.stores.models import Store
 
 
@@ -226,3 +226,97 @@ class FavoriteSerializer(serializers.ModelSerializer):
                 "thumb_url": thumb,
             }
         ).data
+
+
+# ---------------------------------------------------------------------------
+# Orders
+# ---------------------------------------------------------------------------
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product_slug = serializers.CharField(source="variant.product.slug", read_only=True)
+    store_slug = serializers.CharField(source="variant.product.store.slug", read_only=True)
+    store_name = serializers.CharField(source="variant.product.store.name", read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = (
+            "id",
+            "variant",
+            "product_name",
+            "variant_sku",
+            "variant_options",
+            "unit_price_cents",
+            "quantity",
+            "line_total_cents",
+            "tax_class",
+            "tax_rate_percent",
+            "commission_rate_percent",
+            "product_slug",
+            "store_slug",
+            "store_name",
+        )
+        read_only_fields = fields
+
+
+class SellerOrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    store_slug = serializers.CharField(source="store.slug", read_only=True)
+    store_name = serializers.CharField(source="store.name", read_only=True)
+
+    class Meta:
+        model = SellerOrder
+        fields = (
+            "id",
+            "store",
+            "store_slug",
+            "store_name",
+            "status",
+            "subtotal_cents",
+            "currency",
+            "items",
+        )
+        read_only_fields = fields
+
+
+class OrderListSerializer(serializers.ModelSerializer):
+    seller_order_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "status",
+            "total_cents",
+            "currency",
+            "seller_order_count",
+            "expires_at",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_seller_order_count(self, order):
+        return order.seller_orders.count()
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+    seller_orders = SellerOrderSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "status",
+            "total_cents",
+            "currency",
+            "shipping_address",
+            "seller_orders",
+            "expires_at",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+
+class CancelOrderSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=200)

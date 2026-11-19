@@ -50,7 +50,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <img src={heroUrl} alt={hero?.alt_text || product.name} />
           ) : (
             <div className="product-card__placeholder product-detail__placeholder">
-              Loomool
+              kiterpillar
             </div>
           )}
         </div>

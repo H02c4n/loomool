@@ -18,4 +18,11 @@ urlpatterns = [
     path("cart/clear/", views.cart_clear_view, name="cart-clear"),
     path("favorites/", views.favorite_list_view, name="favorite-list"),
     path("favorites/toggle/", views.favorite_toggle_view, name="favorite-toggle"),
+    path("orders/", views.order_list_create_view, name="order-list"),
+    path("orders/<uuid:order_id>/", views.order_detail_view, name="order-detail"),
+    path(
+        "orders/<uuid:order_id>/cancel/",
+        views.order_cancel_view,
+        name="order-cancel",
+    ),
 ]

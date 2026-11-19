@@ -54,6 +54,7 @@ jobs:
             apps/shop/tests/test_stores_public.py \
             apps/shop/tests/test_cart_isolation.py \
             apps/shop/tests/test_favorites.py::TestFavorites::test_two_users_isolated \
+            apps/shop/tests/test_order_isolation.py \
             -x --no-header -q
 
   backend-lint:

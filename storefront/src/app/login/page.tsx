@@ -58,7 +58,7 @@ export default function LoginPage() {
         </button>
       </form>
       <p className="auth-foot">
-        New to Loomool? <Link href="/register">Create an account</Link>
+        New to kiterpillar? <Link href="/register">Create an account</Link>
       </p>
     </div>
   );

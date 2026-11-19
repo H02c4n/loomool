@@ -93,7 +93,7 @@ export default function FavoritesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt={fav.product.name} />
                   ) : (
-                    <span className="product-card__placeholder">Loomool</span>
+                    <span className="product-card__placeholder">kiterpillar</span>
                   )}
                 </div>
                 <div className="product-card__body">
