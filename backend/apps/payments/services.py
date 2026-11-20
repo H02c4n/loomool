@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -9,6 +11,8 @@ from apps.payments import stripe_client
 from apps.payments.models import Payment, PaymentStatus, Refund, RefundStatus
 from apps.shop.models import Order, OrderStatus
 from apps.shop.services import InvalidOrderState
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentError(Exception):
@@ -77,9 +81,15 @@ def create_checkout_session(*, order, user) -> tuple[Payment, str]:
             session = stripe.checkout.Session.retrieve(existing.checkout_session_id)
             if getattr(session, "status", None) == "open" and getattr(session, "url", None):
                 return existing, session.url
-        except Exception:
-            # Session gone on Stripe side — fall through to recreate.
-            pass
+        except Exception as exc:
+            # Session gone on Stripe side (expired, deleted, network error).
+            # Fall through to create a fresh one; the old Payment row is
+            # marked FAILED below.
+            logger.info(
+                "Checkout session %s could not be retrieved, recreating: %s",
+                existing.checkout_session_id,
+                exc,
+            )
 
         existing.status = PaymentStatus.FAILED
         existing.save(update_fields=["status", "updated_at"])
