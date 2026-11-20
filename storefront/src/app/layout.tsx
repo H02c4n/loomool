@@ -46,7 +46,7 @@ export default function RootLayout({
         <main className="site-main">{children}</main>
         <footer className="site-footer">
           <p>© {new Date().getFullYear()} kiterpillar</p>
-          <p className="tagline">Make it · Kit it · Sell it</p>
+          <p className="tagline">Make · Create · Grow</p>
         </footer>
       </body>
     </html>
