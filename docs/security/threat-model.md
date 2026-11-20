@@ -115,3 +115,32 @@ Everything else lands in its phase.
 - `Order.status` cache drift — Phase 6 adds more transitions and will need a helper pattern with tests.
 - DIY_KIT orders (Phase 5b) — BOM-aware stock needs its own race tests.
 - Seller-side order access (Phase 7) — must repeat the isolation test pattern from Phase 2/4/5.
+
+
+## Phase 6 threat mitigations
+
+| Threat | Mitigation | Where |
+| --- | --- | --- |
+| T1 Webhook forgery | `stripe.Webhook.construct_event(raw_body, sig_header, secret)` — signature required, missing/invalid → 400 | `apps/payments/api/views.py` |
+| T2 Webhook replay | `PaymentEvent.stripe_event_id` UNIQUE; duplicate → 200 no-op | `PaymentEvent` model, `test_webhook.py::test_duplicate_event_id_is_idempotent` |
+| T3 Client-supplied amount | Server uses `order.total_cents` from DB, never from request | `create_checkout_session` |
+| T4 Double checkout session | `idempotency_key=checkout-{payment.id}`; existing open session returned | `test_checkout_session.py::test_reuse_open_session` |
+| Success-page spoofing | Order transitions only via webhook, never via success redirect | `test_webhook.py::test_session_completed_transitions_to_paid` |
+| T9 Card testing | Stripe Radar (test mode active) + `ratelimit(5/m)` on checkout create | `views.py` |
+| Checkout IDOR | `Order.objects.filter(id=..., user=request.user)` → other user's order → 404 | `test_isolation.py` |
+| CSRF | `_enforce_csrf` on checkout create; webhook is CSRF-exempt but signature-gated | `views.py` |
+| Late payment after cancel | Order remains CANCELLED; `payment.late_payment` audit log; Phase 8 auto-refund | `webhook_handlers.py::_handle_checkout_session_completed` |
+| Refund IDOR | Admin action only (Django Admin access required); no user-facing refund endpoint | `admin.py` |
+| Duplicate refund | `refund-{payment.id}` idempotency key + `AlreadyRefunded` check | `services.refund_payment` |
+| Webhook PII leak | `_minimise_payload` stores IDs/statuses only; no card data, no email | `views.py` |
+| Webhook handler crash | Event row insert before handler; `processed_at=null` on crash; Celery beat retries within 3-day window | `tasks.retry_failed_payment_events_task` |
+| PCI scope | Hosted Stripe Checkout; card data never touches backend | Stripe Checkout |
+| Key leakage | `STRIPE_SECRET_KEY` only in backend env; gitleaks regex `sk_live_`/`sk_test_` in CI | `.gitleaks.toml` |
+
+**Open follow-ups (Phase 8/9/10):**
+
+- `charge.dispute.created` received but not handled — Phase 8 chargeback workflow.
+- Partial refund / per-seller refund — Phase 8 with ledger.
+- Webhook retry fetches `stripe.Event.retrieve` on original event (Phase 6 retries with minimised payload only) — Phase 8.
+- Maker-checker on admin refund action (Django Admin single-admin today) — Phase 9.
+- Live mode gate (real keys, live Stripe account, legal sign-off) — Phase 10 per spec §25.20.

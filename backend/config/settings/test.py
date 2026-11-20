@@ -29,3 +29,11 @@ STORAGES = {
 
 # Faster reservation expiry for tests. Tests can override per-case.
 ORDER_RESERVATION_TTL_MINUTES = 1
+
+
+# Stripe test doubles — real SDK calls are mocked in tests, but these
+# values make `stripe.api_key` truthy so configuration checks pass.
+STRIPE_SECRET_KEY = "sk_test_mock_for_tests"
+STRIPE_PUBLISHABLE_KEY = "pk_test_mock_for_tests"
+STRIPE_WEBHOOK_SECRET = "whsec_test_mock_for_tests"
+STRIPE_API_VERSION = "2024-11-20.acacia"

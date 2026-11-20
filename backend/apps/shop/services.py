@@ -339,3 +339,60 @@ def cancel_order(*, order: Order, actor, reason: str = "") -> Order:
         metadata={"reason": resolved_reason},
     )
     return order
+
+
+# ---------------------------------------------------------------------------
+# Payment → order state transition
+# ---------------------------------------------------------------------------
+
+
+@transaction.atomic
+def mark_order_paid(*, order, actor, reason: str = "") -> Order:
+    """
+    Transition a PENDING_PAYMENT order to PAID.
+
+    Called by the Stripe webhook handler when the payment succeeds. Uses
+    `select_for_update` so a concurrent cancel or expiry cannot interleave.
+    Raises `InvalidOrderState` if the order is not PENDING_PAYMENT — the
+    webhook handler treats this as a late payment and logs it.
+    """
+    order = Order.objects.select_for_update().get(id=order.id)
+
+    if order.status != OrderStatus.PENDING_PAYMENT:
+        raise InvalidOrderState(order.status)
+
+    previous_status = order.status
+    order.status = OrderStatus.PAID
+    order.save(update_fields=["status", "updated_at"])
+
+    actor_id = getattr(actor, "id", None)
+    resolved_reason = reason or "payment_succeeded"
+
+    for seller_order in order.seller_orders.select_for_update().all():
+        prev = seller_order.status
+        seller_order.status = OrderStatus.PAID
+        seller_order.save(update_fields=["status", "updated_at"])
+        SellerOrderStatusHistory.objects.create(
+            seller_order=seller_order,
+            from_status=prev,
+            to_status=OrderStatus.PAID,
+            reason=resolved_reason,
+            actor_user_id=actor_id,
+        )
+
+    OrderStatusHistory.objects.create(
+        order=order,
+        from_status=previous_status,
+        to_status=OrderStatus.PAID,
+        reason=resolved_reason,
+        actor_user_id=actor_id,
+    )
+
+    log_action(
+        action="order.paid",
+        actor=actor,
+        target_type="order",
+        target_id=order.id,
+        metadata={"reason": resolved_reason},
+    )
+    return order

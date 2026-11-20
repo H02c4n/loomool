@@ -1,4 +1,4 @@
-import type { Cart } from "./types";
+import type { Cart, CheckoutSession, OrderDetail, OrderListItem } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -125,4 +125,60 @@ export async function fetchCart(): Promise<Cart> {
   });
   if (!res.ok) throw new Error(`cart ${res.status}`);
   return (await res.json()) as Cart;
+}
+
+
+export async function fetchOrders(): Promise<OrderListItem[]> {
+  const res = await fetch(`${apiBase()}/api/v1/shop/orders/`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("AUTH_REQUIRED");
+  }
+  if (!res.ok) throw new Error(`orders ${res.status}`);
+  return (await res.json()) as OrderListItem[];
+}
+
+export async function fetchOrder(orderId: string): Promise<OrderDetail> {
+  const res = await fetch(`${apiBase()}/api/v1/shop/orders/${orderId}/`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("AUTH_REQUIRED");
+  }
+  if (res.status === 404) {
+    throw new Error("NOT_FOUND");
+  }
+  if (!res.ok) throw new Error(`order ${res.status}`);
+  return (await res.json()) as OrderDetail;
+}
+
+export async function createCheckoutSession(
+  orderId: string
+): Promise<CheckoutSession> {
+  const url = new URL("/api/v1/payments/checkout-sessions/", apiBase());
+  const csrf = await ensureCsrf();
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(csrf ? { "X-CSRFToken": csrf } : {}),
+    },
+    body: JSON.stringify({ order_id: orderId }),
+  });
+  if (!res.ok) {
+    let msg = `checkout ${res.status}`;
+    try {
+      const j = (await res.json()) as { detail?: string };
+      if (j.detail) msg = j.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
+  return (await res.json()) as CheckoutSession;
 }

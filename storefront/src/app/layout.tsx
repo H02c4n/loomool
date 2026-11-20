@@ -33,6 +33,7 @@ export default function RootLayout({
           <nav className="site-nav">
             <Link href="/search">Shop</Link>
             <Link href="/favorites">Favorites</Link>
+            <Link href="/orders">Orders</Link>
             <Link href="/cart" className="site-nav__cart">
               Cart <CartBadge />
             </Link>

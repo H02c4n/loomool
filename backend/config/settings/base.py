@@ -33,13 +33,15 @@ INSTALLED_APPS = [
     "django_otp",
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",
+    "storages",
     "apps.accounts",
     "apps.audit",
-    "apps.stores",
     "apps.authentication",
+    "apps.stores",
     "apps.catalog",
     "apps.inventory",
     "apps.shop",
+    "apps.payments",
 ]
 
 MIDDLEWARE = [
@@ -182,11 +184,22 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.shop.tasks.expire_stale_orders_task",
         "schedule": 60.0,
     },
+    "retry-failed-payment-events": {
+        "task": "apps.payments.tasks.retry_failed_payment_events_task",
+        "schedule": 300.0,
+    },
 }
 
 # ---- Orders (Phase 5) -------------------------------------------------
 ORDER_RESERVATION_TTL_MINUTES = env.int("ORDER_RESERVATION_TTL_MINUTES", default=30)
 COMMISSION_DEFAULT_RATE_PERCENT = env.int("COMMISSION_DEFAULT_RATE_PERCENT", default=15)
+
+
+# ---- Stripe (Phase 6) -------------------------------------------------
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_API_VERSION = env("STRIPE_API_VERSION", default="2024-11-20.acacia")
 
 
 # ---- Email ------------------------------------------------------------

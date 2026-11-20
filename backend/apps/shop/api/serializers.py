@@ -2,7 +2,7 @@ from django.core.files.storage import default_storage
 from rest_framework import serializers
 
 from apps.catalog.models import Product, ProductImage, ProductVariant
-from apps.shop.models import CartItem, Favorite, Order, OrderItem, SellerOrder
+from apps.shop.models import CartItem, Favorite, Order, OrderItem, OrderStatus, SellerOrder
 from apps.stores.models import Store
 
 
@@ -301,6 +301,8 @@ class OrderListSerializer(serializers.ModelSerializer):
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     seller_orders = SellerOrderSerializer(many=True, read_only=True)
+    payment_status = serializers.SerializerMethodField()
+    can_pay = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -314,8 +316,21 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "expires_at",
             "created_at",
             "updated_at",
+            "payment_status",
+            "can_pay",
         )
         read_only_fields = fields
+
+    def get_payment_status(self, order):
+        latest = order.payments.order_by("-created_at").first()
+        return latest.status if latest is not None else None
+
+    def get_can_pay(self, order):
+        from django.utils import timezone as _tz
+
+        if order.status != OrderStatus.PENDING_PAYMENT:
+            return False
+        return order.expires_at > _tz.now()
 
 
 class CancelOrderSerializer(serializers.Serializer):

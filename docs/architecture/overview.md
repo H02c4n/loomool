@@ -134,3 +134,49 @@ Order (status=PENDING_PAYMENT, expires_at=now + TTL)
 **Phase 5b (deferred):** DIY_KIT orders — BOM stock resolution (kit stock derived from component availability). `create_order_from_cart` currently rejects them with `UnsupportedProductType`.
 
 **Phase 6 (deferred):** Stripe Checkout, webhook → `PAID`, `shipping_address` population, `order_status_history` entries for payment transitions.
+
+
+## Phase 6 payment flow
+User → POST /api/v1/payments/checkout-sessions/ {order_id}
+│
+├─ Order must be PENDING_PAYMENT, unexpired, owned by user
+├─ Existing open Stripe session → return its URL (idempotent)
+├─ Else: create Payment (CREATED) → stripe.checkout.Session.create
+│ → Payment.checkout_session_id = session.id
+└─ Response: { payment_id, session_id, checkout_url }
+│
+▼
+User → Stripe Checkout (hosted, card only, SEK)
+│
+├─ Success → https://kiterpillar.se/orders/{id}/success?session_id=...
+│ └─ Page polls GET /api/v1/shop/orders/{id}/ every 2.5s (up to 60s)
+│ until status === "PAID"
+└─ Cancel → https://kiterpillar.se/orders/{id}/cancel
+│
+▼
+Stripe → POST /api/v1/payments/webhook/ (signed)
+│
+├─ verify signature (raw body + STRIPE_WEBHOOK_SECRET)
+├─ PaymentEvent.get_or_create(stripe_event_id) — idempotent
+├─ handle_event() inside transaction:
+│ ├─ checkout.session.completed
+│ │ ├─ Payment.status → SUCCEEDED, payment_intent_id set
+│ │ ├─ Order PENDING_PAYMENT → PAID (mark_order_paid, select_for_update)
+│ │ └─ Late payment (order already cancelled) → audit log, no transition
+│ ├─ payment_intent.succeeded (idempotent fallback)
+│ ├─ payment_intent.payment_failed → Payment.status = FAILED
+│ └─ charge.refunded → Payment.status = REFUNDED / PARTIALLY_REFUNDED
+└─ PaymentEvent.processed_at = now()
+
+
+**Refund (admin-triggered):**
+Admin → Django Admin → Payment action "Refund full amount"
+│
+├─ stripe.Refund.create(payment_intent, idempotency_key=refund-{payment.id})
+├─ Refund row created (status=PENDING)
+└─ Later: charge.refunded webhook → Refund.status = SUCCEEDED,
+Payment.status = REFUNDED
+
+
+
+**Isolation contract:** checkout endpoint filters by `Order.user=request.user` → other user's order id yields **404**. Webhook endpoint is `AllowAny` (Stripe is the caller, authenticated by signature).

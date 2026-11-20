@@ -55,6 +55,7 @@ jobs:
             apps/shop/tests/test_cart_isolation.py \
             apps/shop/tests/test_favorites.py::TestFavorites::test_two_users_isolated \
             apps/shop/tests/test_order_isolation.py \
+            apps/payments/tests/test_isolation.py \
             -x --no-header -q
 
   backend-lint:
@@ -98,15 +99,15 @@ jobs:
       - name: Install
         working-directory: ${{ matrix.app }}
         run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: ${{ matrix.app }}
+        run: pnpm build
       - name: Typecheck
         working-directory: ${{ matrix.app }}
         run: pnpm typecheck
       - name: Lint
         working-directory: ${{ matrix.app }}
         run: pnpm lint
-      - name: Build
-        working-directory: ${{ matrix.app }}
-        run: pnpm build
 
   security:
     runs-on: ubuntu-latest

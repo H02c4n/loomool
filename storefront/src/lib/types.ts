@@ -139,3 +139,64 @@ export interface Favorite {
   product: CartLineProduct;
   created_at: string;
 }
+
+
+// ---- Orders --------------------------------------------------------------
+
+export interface OrderListItem {
+  id: string;
+  status: string;
+  total_cents: number;
+  currency: string;
+  seller_order_count: number;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface OrderItemLine {
+  id: string;
+  variant: string;
+  product_name: string;
+  variant_sku: string;
+  variant_options: Record<string, unknown>;
+  unit_price_cents: number;
+  quantity: number;
+  line_total_cents: number;
+  tax_class: string;
+  tax_rate_percent: number;
+  commission_rate_percent: number;
+  product_slug: string;
+  store_slug: string;
+  store_name: string;
+}
+
+export interface SellerOrder {
+  id: string;
+  store: string;
+  store_slug: string;
+  store_name: string;
+  status: string;
+  subtotal_cents: number;
+  currency: string;
+  items: OrderItemLine[];
+}
+
+export interface OrderDetail {
+  id: string;
+  status: string;
+  total_cents: number;
+  currency: string;
+  shipping_address: Record<string, unknown>;
+  seller_orders: SellerOrder[];
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+  payment_status: string | null;
+  can_pay: boolean;
+}
+
+export interface CheckoutSession {
+  payment_id: string;
+  session_id: string;
+  checkout_url: string;
+}
